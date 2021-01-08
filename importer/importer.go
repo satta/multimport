@@ -2,18 +2,27 @@ package importer
 
 import (
 	"bufio"
-	"fmt"
 	"os/exec"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type Importer struct {
-	name string
+	InChan chan []byte
+	Logger *log.Entry
 }
 
-func (i *Importer) Run(inChan chan []byte, importType string, name string) error {
-	i.name = name
+func MakeImporter(inChan chan []byte, name string, vastPath string) *Importer {
+	i := &Importer{
+		InChan: inChan,
+		Logger: log.WithFields(log.Fields{
+			"importer": name,
+		}),
+	}
+	return i
+}
+
+func (i *Importer) Run(importType string) error {
 	for {
 		stopChan := make(chan bool)
 		cmd := exec.Command("vast", "import", importType)
@@ -30,7 +39,7 @@ func (i *Importer) Run(inChan chan []byte, importType string, name string) error
 			log.Fatal(err)
 		}
 		go func() {
-			for line := range inChan {
+			for line := range i.InChan {
 				select {
 				case <-stopChan:
 					return
@@ -41,16 +50,16 @@ func (i *Importer) Run(inChan chan []byte, importType string, name string) error
 			}
 		}()
 		go func() {
-			log.Debug(i.name + " started stderr scanner goroutine")
+			i.Logger.Debug("started stderr scanner goroutine")
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
-				fmt.Println(i.name + ": " + scanner.Text())
+				i.Logger.Info(scanner.Text())
 			}
-			log.Debug(i.name + " closed stderr scanner goroutine")
+			i.Logger.Debug("closed stderr scanner goroutine")
 		}()
 		err = cmd.Wait()
 		if err != nil {
-			log.Errorf("importer finished with error: %v", err)
+			i.Logger.Errorf("importer finished with error: %v", err)
 		}
 		close(stopChan)
 	}

@@ -15,10 +15,11 @@ func suriMain(cmd *cobra.Command, args []string) {
 	inChan := make(chan []byte)
 
 	nofJobs, _ := rootCmd.PersistentFlags().GetUint("jobs")
+	vastPath, _ := rootCmd.PersistentFlags().GetString("vastpath")
 	log.Debugf("starting %d jobs", nofJobs)
 	for i := uint(0); i < nofJobs; i++ {
-		importer := &importer.Importer{}
-		go importer.Run(inChan, "suricata", fmt.Sprintf("suri_%d", i))
+		importer := importer.MakeImporter(inChan, fmt.Sprintf("suri_%d", i), vastPath)
+		go importer.Run("suricata")
 		log.Debugf("importer %d started", i)
 	}
 

@@ -23,6 +23,7 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	rootCmd.PersistentFlags().UintP("jobs", "j", 4, "amount of parallel VAST import processes")
+	rootCmd.PersistentFlags().StringP("vastpath", "v", "vast", "VAST executable")
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
