@@ -1,8 +1,5 @@
 package cmd
 
-// DCSO FEVER
-// Copyright (c) 2018, DCSO GmbH
-
 import (
 	"fmt"
 	"os"
