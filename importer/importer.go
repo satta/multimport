@@ -8,8 +8,9 @@ import (
 )
 
 type Importer struct {
-	InChan chan []byte
-	Logger *log.Entry
+	InChan   chan []byte
+	VastPath string
+	Logger   *log.Entry
 }
 
 func MakeImporter(inChan chan []byte, name string, vastPath string) *Importer {
@@ -18,6 +19,7 @@ func MakeImporter(inChan chan []byte, name string, vastPath string) *Importer {
 		Logger: log.WithFields(log.Fields{
 			"importer": name,
 		}),
+		VastPath: vastPath,
 	}
 	return i
 }
@@ -25,7 +27,7 @@ func MakeImporter(inChan chan []byte, name string, vastPath string) *Importer {
 func (i *Importer) Run(importType string) error {
 	for {
 		stopChan := make(chan bool)
-		cmd := exec.Command("vast", "import", importType)
+		cmd := exec.Command(i.VastPath, "import", importType)
 		stdin, err := cmd.StdinPipe()
 		if err != nil {
 			log.Fatal(err)
