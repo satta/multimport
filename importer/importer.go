@@ -27,6 +27,7 @@ func MakeImporter(inChan chan []byte, name string, vastPath string, params []str
 }
 
 func (i *Importer) Run(importType string) error {
+	i.Logger.Debugf("importer started")
 	for {
 		stopChan := make(chan bool)
 		params := append(i.Params, "import", importType)
