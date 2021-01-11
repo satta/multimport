@@ -54,3 +54,11 @@ INFO[0030] 2021-01-08T14:18:02.014 suricata-reader produced 20113 events at a ra
 ...
 ```
 The dead process (`suri_1`) is restarted instantly.
+
+## Author/Contact
+
+Sascha Steinbiss
+
+## License
+
+BSD-3-clause
