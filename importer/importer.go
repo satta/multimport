@@ -11,15 +11,17 @@ type Importer struct {
 	InChan   chan []byte
 	VastPath string
 	Logger   *log.Entry
+	Params   []string
 }
 
-func MakeImporter(inChan chan []byte, name string, vastPath string) *Importer {
+func MakeImporter(inChan chan []byte, name string, vastPath string, params []string) *Importer {
 	i := &Importer{
 		InChan: inChan,
 		Logger: log.WithFields(log.Fields{
 			"importer": name,
 		}),
 		VastPath: vastPath,
+		Params:   params,
 	}
 	return i
 }
@@ -27,7 +29,9 @@ func MakeImporter(inChan chan []byte, name string, vastPath string) *Importer {
 func (i *Importer) Run(importType string) error {
 	for {
 		stopChan := make(chan bool)
-		cmd := exec.Command(i.VastPath, "import", importType)
+		params := append(i.Params, "import", importType)
+		i.Logger.Debugf("starting command '%s' with params %v", i.VastPath, params)
+		cmd := exec.Command(i.VastPath, params...)
 		stdin, err := cmd.StdinPipe()
 		if err != nil {
 			log.Fatal(err)

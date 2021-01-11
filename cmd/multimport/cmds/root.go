@@ -21,6 +21,7 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	rootCmd.PersistentFlags().UintP("jobs", "j", 4, "amount of parallel VAST import processes")
 	rootCmd.PersistentFlags().StringP("vastpath", "", "vast", "VAST executable")
+	rootCmd.PersistentFlags().StringSliceP("extra-params", "p", []string{}, "extra parameters to pass to 'vast import', separated by commas")
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
