@@ -16,11 +16,11 @@ Available Commands:
   suricata    import Suricata data
 
 Flags:
-  -p, --extra-params strings   extra parameters to pass to 'vast import'
+  -p, --extra-params strings   extra parameters to pass to 'vast import', separated by commas
   -h, --help                   help for multimport
   -j, --jobs uint              amount of parallel VAST import processes (default 4)
       --vast-path string       VAST executable (default "vast")
-  -v, --verbose                be verbose and show debug level output
+  -v, --verbose                be verbose
 
 Use "multimport [command] --help" for more information about a command.
 ```
