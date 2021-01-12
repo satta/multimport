@@ -3,15 +3,20 @@ package importer
 import (
 	"bufio"
 	"os/exec"
+	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type Importer struct {
-	InChan   chan []byte
-	VastPath string
-	Logger   *log.Entry
-	Params   []string
+	InChan            chan []byte
+	VastPath          string
+	Logger            *log.Entry
+	Params            []string
+	Count             uint64
+	CountLock         sync.Mutex
+	CountIntervalSecs uint
 }
 
 func MakeImporter(inChan chan []byte, name string, vastPath string, params []string) *Importer {
@@ -20,8 +25,9 @@ func MakeImporter(inChan chan []byte, name string, vastPath string, params []str
 		Logger: log.WithFields(log.Fields{
 			"importer": name,
 		}),
-		VastPath: vastPath,
-		Params:   params,
+		VastPath:          vastPath,
+		Params:            params,
+		CountIntervalSecs: 10,
 	}
 	return i
 }
@@ -47,6 +53,9 @@ func (i *Importer) Run(importType string) error {
 		}
 		go func() {
 			for line := range i.InChan {
+				i.CountLock.Lock()
+				i.Count++
+				i.CountLock.Unlock()
 				select {
 				case <-stopChan:
 					return
@@ -63,6 +72,16 @@ func (i *Importer) Run(importType string) error {
 				i.Logger.Info(scanner.Text())
 			}
 			i.Logger.Debug("closed stderr scanner goroutine")
+		}()
+		go func() {
+			for {
+				time.Sleep(time.Duration(i.CountIntervalSecs) * time.Second)
+				i.CountLock.Lock()
+				myCount := i.Count
+				i.Count = 0
+				i.CountLock.Unlock()
+				i.Logger.Infof("processed %f lines per second (%d total)", float64(myCount)/float64(i.CountIntervalSecs), myCount)
+			}
 		}()
 		err = cmd.Wait()
 		if err != nil {
