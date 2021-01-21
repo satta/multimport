@@ -23,6 +23,7 @@ func MakeImporter(inChan chan []byte, name string, vastPath string, params []str
 	i := &Importer{
 		InChan: inChan,
 		Logger: log.WithFields(log.Fields{
+			"domain":   "importer",
 			"importer": name,
 		}),
 		VastPath:          vastPath,
