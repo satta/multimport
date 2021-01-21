@@ -12,6 +12,7 @@ import (
 )
 
 func suriMain(cmd *cobra.Command, args []string) {
+	log.SetFormatter(util.UTCFormatter{&log.JSONFormatter{}})
 	inChan := make(chan []byte)
 
 	verbose, _ := rootCmd.PersistentFlags().GetBool("verbose")
