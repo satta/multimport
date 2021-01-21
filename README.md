@@ -16,9 +16,12 @@ Available Commands:
   suricata    import Suricata data
 
 Flags:
+  -b, --bufsize uint           buffer size in lines (default 100000)
   -p, --extra-params strings   extra parameters to pass to 'vast import', separated by commas
   -h, --help                   help for multimport
   -j, --jobs uint              amount of parallel VAST import processes (default 4)
+  -l, --logfile string         logfile (stderr if empty)
+      --logjson                log in JSON format
       --vast-path string       VAST executable (default "vast")
   -v, --verbose                be verbose
 
