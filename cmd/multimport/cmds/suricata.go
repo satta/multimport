@@ -44,7 +44,8 @@ func suriMain(cmd *cobra.Command, args []string) {
 
 	bufSize, _ := rootCmd.PersistentFlags().GetUint("bufsize")
 	inChan := make(chan []byte, bufSize)
-	dropped := 0
+	var dropped uint64 = 0
+	var incoming uint64 = 0
 
 	go func() {
 		for {
@@ -54,6 +55,7 @@ func suriMain(cmd *cobra.Command, args []string) {
 				"buffer-capacity": cap(inChan),
 				"buffer-length":   len(inChan),
 				"dropped":         dropped,
+				"received":        incoming,
 			}).Info()
 		}
 	}()
@@ -79,6 +81,7 @@ func suriMain(cmd *cobra.Command, args []string) {
 			log.Debug("channel full, discarding line")
 			dropped++
 		}
+		incoming++
 	}
 }
 
