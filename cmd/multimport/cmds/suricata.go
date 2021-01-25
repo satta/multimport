@@ -79,7 +79,6 @@ func suriMain(cmd *cobra.Command, args []string) {
 			log.Debug("channel full, discarding line")
 			dropped++
 		}
-		inChan <- []byte(line)
 	}
 }
 
