@@ -44,6 +44,10 @@ func (i *Importer) Run(importType string) error {
 		if err != nil {
 			log.Fatal(err)
 		}
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			log.Fatal(err)
+		}
 		stderr, err := cmd.StderrPipe()
 		if err != nil {
 			log.Fatal(err)
@@ -52,27 +56,44 @@ func (i *Importer) Run(importType string) error {
 		if err != nil {
 			log.Fatal(err)
 		}
+		stdinWriter := bufio.NewWriter(stdin)
 		go func() {
-			for line := range i.InChan {
-				i.CountLock.Lock()
-				i.Count++
-				i.CountLock.Unlock()
-				select {
-				case <-stopChan:
-					return
-				default:
-					stdin.Write(line)
+			i.Logger.Debug("started stdin writer goroutine")
+			defer i.Logger.Debug("left stdin writer goroutine")
+			for {
+				for line := range i.InChan {
+					i.CountLock.Lock()
+					i.Count++
+					i.CountLock.Unlock()
+					select {
+					case <-stopChan:
+						return
+					default:
+						_, err := stdinWriter.Write(line)
+						if err != nil {
+							i.Logger.Debugf("could not write: %s", error(err))
+						}
+					}
 				}
-
 			}
 		}()
+		stderrReader := bufio.NewReader(stderr)
 		go func() {
 			i.Logger.Debug("started stderr scanner goroutine")
-			scanner := bufio.NewScanner(stderr)
+			defer i.Logger.Debug("closed stderr scanner goroutine")
+			scanner := bufio.NewScanner(stderrReader)
 			for scanner.Scan() {
 				i.Logger.Info(scanner.Text())
 			}
-			i.Logger.Debug("closed stderr scanner goroutine")
+		}()
+		stdoutReader := bufio.NewReader(stdout)
+		go func() {
+			i.Logger.Debug("started stdout scanner goroutine")
+			defer i.Logger.Debug("closed stdout scanner goroutine")
+			scanner := bufio.NewScanner(stdoutReader)
+			for scanner.Scan() {
+				i.Logger.Info(scanner.Text())
+			}
 		}()
 		go func() {
 			for {

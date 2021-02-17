@@ -78,7 +78,6 @@ func suriMain(cmd *cobra.Command, args []string) {
 		select {
 		case inChan <- []byte(line):
 		default:
-			log.Debug("channel full, discarding line")
 			dropped++
 		}
 		incoming++
