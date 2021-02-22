@@ -14,7 +14,9 @@ import (
 )
 
 func suriMain(cmd *cobra.Command, args []string) {
-	log.SetFormatter(util.UTCFormatter{&log.JSONFormatter{}})
+	log.SetFormatter(util.UTCFormatter{
+		Formatter: &log.JSONFormatter{},
+	})
 
 	verbose, _ := rootCmd.PersistentFlags().GetBool("verbose")
 	if verbose {
@@ -30,22 +32,26 @@ func suriMain(cmd *cobra.Command, args []string) {
 			log.Fatal(err)
 		}
 		defer file.Close()
-		log.SetFormatter(util.UTCFormatter{&log.TextFormatter{
-			DisableColors: true,
-			FullTimestamp: true,
-		}})
+		log.SetFormatter(util.UTCFormatter{
+			Formatter: &log.TextFormatter{
+				DisableColors: true,
+				FullTimestamp: true,
+			},
+		})
 		log.SetOutput(file)
 	}
 
 	logjson, _ := rootCmd.PersistentFlags().GetBool("logjson")
 	if logjson {
-		log.SetFormatter(util.UTCFormatter{&log.JSONFormatter{}})
+		log.SetFormatter(util.UTCFormatter{
+			Formatter: &log.JSONFormatter{},
+		})
 	}
 
 	bufSize, _ := rootCmd.PersistentFlags().GetUint("bufsize")
 	inChan := make(chan []byte, bufSize)
-	var dropped uint64 = 0
-	var incoming uint64 = 0
+	var dropped uint64
+	var incoming uint64
 
 	go func() {
 		for {
