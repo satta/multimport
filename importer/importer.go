@@ -79,20 +79,30 @@ func (i *Importer) Run(importType string) error {
 		}()
 		stderrReader := bufio.NewReader(stderr)
 		go func() {
-			i.Logger.Debug("started stderr scanner goroutine")
-			defer i.Logger.Debug("closed stderr scanner goroutine")
-			scanner := bufio.NewScanner(stderrReader)
-			for scanner.Scan() {
-				i.Logger.Info(scanner.Text())
+			for {
+				i.Logger.Debug("started stderr scanner goroutine")
+				scanner := bufio.NewScanner(stderrReader)
+				for scanner.Scan() {
+					i.Logger.Info(scanner.Text())
+				}
+				if err := scanner.Err(); err != nil {
+					i.Logger.Errorf("error reading stderr: %s", err)
+				}
+				i.Logger.Debug("end of stderr scanner goroutine")
 			}
 		}()
 		stdoutReader := bufio.NewReader(stdout)
 		go func() {
-			i.Logger.Debug("started stdout scanner goroutine")
-			defer i.Logger.Debug("closed stdout scanner goroutine")
-			scanner := bufio.NewScanner(stdoutReader)
-			for scanner.Scan() {
-				i.Logger.Info(scanner.Text())
+			for {
+				i.Logger.Debug("started stdout scanner goroutine")
+				scanner := bufio.NewScanner(stdoutReader)
+				for scanner.Scan() {
+					i.Logger.Info(scanner.Text())
+				}
+				if err := scanner.Err(); err != nil {
+					i.Logger.Errorf("error reading stdout: %s", err)
+				}
+				i.Logger.Debug("end of stdout scanner goroutine")
 			}
 		}()
 		go func() {
