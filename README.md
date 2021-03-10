@@ -14,6 +14,7 @@ Usage:
 Available Commands:
   help        Help about any command
   suricata    import Suricata data
+  version     show version number
 
 Flags:
   -b, --bufsize uint           buffer size in lines (default 100000)
