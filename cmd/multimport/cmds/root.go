@@ -18,8 +18,10 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	rootCmd.PersistentFlags().UintP("jobs", "j", 4, "amount of parallel VAST import processes")
-	rootCmd.PersistentFlags().UintP("bufsize", "b", 100000, "buffer size in lines")
+	rootCmd.PersistentFlags().UintP("bufsize", "b", 100000, "input event buffer size in EVE lines")
+	rootCmd.PersistentFlags().IntP("vastbufsize", "s", 1*1024*1024, "VAST process communication buffer size in bytes")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "be verbose")
+	rootCmd.PersistentFlags().BoolP("discard", "", false, "discard mode, only reads from source without importing (for debugging)")
 	rootCmd.PersistentFlags().StringP("vast-path", "", "vast", "VAST executable")
 	rootCmd.PersistentFlags().StringP("logfile", "l", "", "logfile (stderr if empty)")
 	rootCmd.PersistentFlags().BoolP("logjson", "", false, "log in JSON format")

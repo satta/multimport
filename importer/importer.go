@@ -2,11 +2,16 @@ package importer
 
 import (
 	"bufio"
+	"context"
 	"os/exec"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+)
+
+const (
+	maxMsgSize = 1 * 1024 * 1024 // default 1MB
 )
 
 type Importer struct {
@@ -17,6 +22,7 @@ type Importer struct {
 	Count             uint64
 	CountLock         sync.Mutex
 	CountIntervalSecs uint
+	BufSize           int
 }
 
 func MakeImporter(inChan chan []byte, name string, vastPath string, params []string) *Importer {
@@ -29,30 +35,35 @@ func MakeImporter(inChan chan []byte, name string, vastPath string, params []str
 		VastPath:          vastPath,
 		Params:            params,
 		CountIntervalSecs: 10,
+		BufSize:           maxMsgSize,
 	}
 	return i
 }
 
-func (i *Importer) Run(importType string) error {
+func (i *Importer) SetBufSize(bufSize int) {
+	i.BufSize = bufSize
+}
+
+func (i *Importer) Run(importType string, ctx context.Context) error {
 	i.Logger.Debugf("importer started")
 	for {
 		stopChan := make(chan bool, 2)
 		params := append(i.Params, "import", importType)
 		i.Logger.Debugf("starting command '%s' with params %v", i.VastPath, params)
-		cmd := exec.Command(i.VastPath, params...)
+		cmd := exec.CommandContext(ctx, i.VastPath, params...)
 		stdin, err := cmd.StdinPipe()
 		if err != nil {
 			log.Fatal(err)
 		}
-		stdout, err := cmd.StdoutPipe()
+		/*stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			log.Fatal(err)
 		}
 		stderr, err := cmd.StderrPipe()
 		if err != nil {
 			log.Fatal(err)
-		}
-		stdinWriter := bufio.NewWriter(stdin)
+		} */
+		stdinWriter := bufio.NewWriterSize(stdin, i.BufSize)
 		go func(sChan chan bool) {
 			i.Logger.Debug("started stdin writer goroutine")
 			defer i.Logger.Debug("left stdin writer goroutine")
@@ -65,66 +76,83 @@ func (i *Importer) Run(importType string) error {
 						i.CountLock.Lock()
 						i.Count++
 						i.CountLock.Unlock()
+						// Make sure we always pass sets of full lines to VAST.
+						// That is, if the next line would not fit into the
+						// remaining buffer, flush first.
+						if stdinWriter.Available() <= len(line) {
+							err = stdinWriter.Flush()
+							if err != nil {
+								i.Logger.Debugf("error flushing: %s", error(err))
+							}
+						}
 						_, err := stdinWriter.Write(line)
 						if err != nil {
-							i.Logger.Debugf("could not write: %s", error(err))
+							i.Logger.Errorf("error writing: %s", error(err))
 						}
 					}
 				}
 			}
 		}(stopChan)
-		stdoutReader := bufio.NewReader(stdout)
-		go func(sChan chan bool) {
-			i.Logger.Debug("started stdout scanner goroutine")
-			defer i.Logger.Debug("left stdout scanner goroutine")
-			for {
-				select {
-				case <-sChan:
-					return
-				default:
-					i.Logger.Debug("started stdout scanner loop")
-					scanner := bufio.NewScanner(stdoutReader)
-					for scanner.Scan() {
-						select {
-						case <-sChan:
-							return
-						default:
-							i.Logger.Info(scanner.Text())
+		/*
+			stdoutReader := bufio.NewReaderSize(stdout, i.BufSize)
+			go func(sChan chan bool) {
+				i.Logger.Debug("started stdout scanner goroutine")
+				defer i.Logger.Debug("left stdout scanner goroutine")
+				for {
+					select {
+					case <-sChan:
+						return
+					default:
+						i.Logger.Debug("started stdout scanner loop")
+						scanner := bufio.NewScanner(stdoutReader)
+						scanner.Buffer(make([]byte, i.BufSize), i.BufSize)
+						for scanner.Scan() {
+							select {
+							case <-sChan:
+								return
+							default:
+								i.Logger.WithFields(log.Fields{
+									"from": "stdout",
+								}).Info(scanner.Text())
+							}
 						}
-					}
-					if err := scanner.Err(); err != nil {
-						i.Logger.Errorf("error reading stdout: %s", err)
-					}
-					i.Logger.Debug("end of stdout scanner loop")
-				}
-			}
-		}(stopChan)
-		stderrReader := bufio.NewReader(stderr)
-		go func(sChan chan bool) {
-			i.Logger.Debug("started stderr scanner goroutine")
-			defer i.Logger.Debug("left stderr scanner goroutine")
-			for {
-				select {
-				case <-sChan:
-					return
-				default:
-					i.Logger.Debug("started stderr scanner loop")
-					scanner := bufio.NewScanner(stderrReader)
-					for scanner.Scan() {
-						select {
-						case <-sChan:
-							return
-						default:
-							i.Logger.Info(scanner.Text())
+						if err := scanner.Err(); err != nil {
+							i.Logger.Errorf("error reading stdout: %s", err)
 						}
+						i.Logger.Debug("end of stdout scanner loop")
 					}
-					if err := scanner.Err(); err != nil {
-						i.Logger.Errorf("error reading stderr: %s", err)
-					}
-					i.Logger.Debug("end of stderr scanner loop")
 				}
-			}
-		}(stopChan)
+			}(stopChan)
+			stderrReader := bufio.NewReaderSize(stderr, i.BufSize)
+			go func(sChan chan bool) {
+				i.Logger.Debug("started stderr scanner goroutine")
+				defer i.Logger.Debug("left stderr scanner goroutine")
+				for {
+					select {
+					case <-sChan:
+						return
+					default:
+						i.Logger.Debug("started stderr scanner loop")
+						scanner := bufio.NewScanner(stderrReader)
+						scanner.Buffer(make([]byte, i.BufSize), i.BufSize)
+						for scanner.Scan() {
+							select {
+							case <-sChan:
+								return
+							default:
+								i.Logger.WithFields(log.Fields{
+									"from": "stderr",
+								}).Info(scanner.Text())
+							}
+						}
+						if err := scanner.Err(); err != nil {
+							i.Logger.Errorf("error reading stderr: %s", err)
+						}
+						i.Logger.Debug("end of stderr scanner loop")
+					}
+				}
+			}(stopChan)
+		*/
 		go func(sChan chan bool) {
 			i.Logger.Debug("started logger goroutine")
 			defer i.Logger.Debug("left logger goroutine")
